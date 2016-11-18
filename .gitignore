@@ -1,0 +1,5 @@
+# Files to ignore
+*.txt
+
+# Ignore(for now) sound files
+*.wav

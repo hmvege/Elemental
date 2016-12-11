@@ -3,6 +3,7 @@
 
 # Ignore(for now) sound files
 *.wav
+*.html
 
 # Junk
 .DS_Store

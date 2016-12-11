@@ -15,7 +15,8 @@ class Sound:
 		function = [i(channels).reshape((len(channels),1)) for i in function]
 		t = linspace(0, length, length*rate)
 		sinesum = 0
-		print function
+		print function, channels
+		exit("Line 19. Testing,exiting...")
 		for i in function:
 			sinesum += sin(i*2*pi*t*Hz)
 		data = np.sum(sinesum,axis=0)*amplitude

@@ -10,12 +10,6 @@ class Sound:
 		self.n1 = n1
 		self.filename = filename
 
-	def _rydeberg(self):
-		n1 = self.n1
-		n2 = linspace(n1+1,n1+11,11)
-		R = 1.097e1 # [m^-1]
-		return (R*(1./n1**2 - 1./n2**2))
-
 	def __call__(self, length, amplitude, Hz, rate = 44100):
 		if amplitude >= 0.1:
 			exit('Change amplitude! %g is way to high!' % amplitude)
@@ -76,6 +70,12 @@ class Sound:
 		import subprocess
 		audio_file = "/Users/mathiasmamenvege/Programming/Programmering av lyder/%s.wav" % self.filename
 		return_code = subprocess.call(["afplay", audio_file])
+
+	def _rydeberg(self):
+		n1 = self.n1
+		n2 = linspace(n1+1,n1+11,11)
+		R = 1.097e1 # [m^-1]
+		return (R*(1./n1**2 - 1./n2**2))
 
 if __name__ == '__main__':
 	# Lyman

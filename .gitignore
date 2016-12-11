@@ -7,3 +7,10 @@
 
 # Junk
 .DS_Store
+
+# Files to ignore
+ElementDownloader.py
+ElementSound.pyc
+envelope.py
+retrieving_periodic_table.py
+test.py

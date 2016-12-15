@@ -19,14 +19,14 @@ class Sound:
 		self.N,self.t = N,t
 		#sinesum = 0
 		data = self._rydeberg()
-
+		print data
+		# exit()
 		tones = zeros((len(t),len(data)))
 		env = self._envelope()
 		for i in range(len(data)):
 			tones[:,i] = env*sin(data[i]*2*pi*t*Hz)
 
 		tone = sum(amplitude*tones,axis=1)
-		print tone
 		self.tone, self.rate, self.length, self.Hz =\
 			tone, rate, length, Hz
 		
@@ -68,7 +68,7 @@ class Sound:
 
 	def play(self):
 		import subprocess
-		audio_file = "/Users/mathiasmamenvege/Programming/Programmering av lyder/%s.wav" % self.filename
+		audio_file = "%s.wav" % self.filename
 		return_code = subprocess.call(["afplay", audio_file])
 
 	def _rydeberg(self):
@@ -85,10 +85,10 @@ if __name__ == '__main__':
 	# Lyman & Balmer % Paschen
 	paschen_function = lambda n : 1.0/9-(1.0/(n+2)**2)
 
-	lyman = Sound(3,'Lyman_test1')
-	lyman(length=60, amplitude=0.09, Hz=440, rate = 44100)
-	#lyman.plot()
-	lyman.play()
+	# lyman = Sound(3,'Lyman_test1')
+	# lyman(length=60, amplitude=0.09, Hz=440, rate = 44100)
+	# #lyman.plot()
+	# lyman.play()
 
 	# balmer = Sound([lyman_function, balmer_function], 'Balmer_hydrogen')
 	# balmer(length=10, amplitude=0.09, Hz=880, rate = 44100)

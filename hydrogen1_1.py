@@ -13,6 +13,7 @@ class Sound:
 		function, filename = self.function, self.filename
 		channels = arange(channels[0],channels[1]+1,dtype=int)
 		function = [i(channels).reshape((len(channels),1)) for i in function]
+		print function
 		t = linspace(0, length, length*rate)
 		self.rate, self.t, self.length, self.Hz = rate, t, length, Hz
 		sinesum = 0
@@ -72,13 +73,13 @@ if __name__ == '__main__':
 	# Lyman & Balmer % Paschen
 	paschen_function = lambda n : 1.0/9-(1.0/(n+2)**2)
 
-	lyman = Sound([lyman_function], 'Lyman_hydrogen')
-	lyman(length=60, amplitude=2000, Hz=440, channels=[2, 10], rate = 44100)
-	#lyman.fourier()
-	#lyman.play()
-	#lyman.plot()
+	# lyman = Sound([lyman_function], 'Lyman_hydrogen')
+	# lyman(length=60, amplitude=2000, Hz=440, channels=[2, 10], rate = 44100)
+	# #lyman.fourier()
+	# #lyman.play()
+	# #lyman.plot()
 
-	balmer = Sound([lyman_function, balmer_function], 'Balmer_hydrogen')
+	balmer = Sound([lyman_function, balmer_function], 'Balmer_hydrogen_test')
 	balmer(length=60, amplitude=1000, Hz=880, channels=[2, 12], rate = 44100)
 	#balmer.fourier()
 	#balmer.play()
@@ -90,8 +91,8 @@ if __name__ == '__main__':
 	# only_balmer.plot()
 
 
-	paschen = Sound([lyman_function, balmer_function,paschen_function], 'Paschen_hydrogen')
-	paschen(length=60, amplitude=1200, Hz=440, channels=[2, 12], rate = 44100)
-	# paschen.play()
-	# paschen.fourier()
-	# paschen.plot()
+	# paschen = Sound([lyman_function, balmer_function,paschen_function], 'Paschen_hydrogen_test')
+	# paschen(length=10, amplitude=1200, Hz=440, channels=[2, 12], rate = 44100)
+	# # paschen.play()
+	# # paschen.fourier()
+	# # paschen.plot()

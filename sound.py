@@ -116,10 +116,10 @@ class Sound:
 # carbon.play()
 # carbon.fourier()
 
-uranium = Sound('uranium_spectra.txt', 'U_test')
-uranium(length=5,Hz=440,amplitude=0.01)
-uranium.play()
-#uranium.plot()
+# uranium = Sound('uranium_spectra.txt', 'U_test')
+# uranium(length=5,Hz=440,amplitude=0.01)
+# uranium.play()
+# #uranium.plot()
 
 # plutonium = Sound('plutonium_spectra.txt', 'Pu')
 # plutonium(length=10,Hz=440,amplitude=0.01)

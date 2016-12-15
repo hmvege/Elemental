@@ -1,5 +1,6 @@
 # Files to ignore
 *.txt
+*.pyc
 
 # Ignore(for now) sound files
 *.wav
@@ -10,7 +11,9 @@
 
 # Files to ignore
 ElementDownloader.py
-ElementSound.pyc
 envelope.py
 retrieving_periodic_table.py
 test.py
+sound.py
+hydrogen2.py
+hydrogen1_1.py

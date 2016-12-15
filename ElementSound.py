@@ -5,11 +5,13 @@ import matplotlib.pyplot as plt
 import urllib2
 import multiprocessing
 import argparse
-from scipy.io.wavfile import write
+from scipy.io.wavfile import write as wavfile_write
 
 import time # for benchmarking purposes
 
-# Program for converting atomic spectra to sound
+"""
+Program for converting atomic spectra to sound.
+"""
 
 # Periodic table
 periodic_table = [('Hydrogen', '1', 'H'), ('Helium', '2', 'He'), ('Lithium', '3', 'Li'), ('Beryllium', '4', 'Be'), ('Boron', '5', 'B'),
@@ -48,21 +50,17 @@ def element_search(search_element):
 			return search_element
 	return False
 
-def element_downloader(element, local_webpage=None):
+def element_downloader(element, local_file=None):
 	"""
 	Function to retrieve element wavelengths
 	"""
-	if local_webpage:
-		nist_webpage = local_webpage
+	if local_file:
+		nist_webpage = local_file
 		html = open(nist_webpage, 'r')
 	else:
-		import sys; sys.exit('Quiting in avoidance to have to download anything...')
+		# sys.exit('Quiting in avoidance to have to download anything...')
 		nist_webpage = 'http://physics.nist.gov/cgi-bin/ASD/lines1.pl?spectra=%s&low_wl=&upp_wn=&upp_wl=&low_wn=&unit=1&de=0&java_window=3&java_mult=&format=0&line_out=0&en_unit=0&output=0&page_size=15&show_obs_wl=1&order_out=0&max_low_enrg=&show_av=3&max_upp_enrg=&tsb_value=0&min_str=&A_out=0&max_str=&allowed_out=1&min_accur=&min_intens=&submit=Retrieve+Data' % element
 		html = urllib2.urlopen(nist_webpage)
-
-
-	#============ METHOD 3 ==============================================================
-	pre_time = time.clock()
 
 	# Strings to match for in html-file
 	pre_string = '\<td class\=\"fix\"\>[\W]+' # The [\W]+ matches all whitespace characters leading up to the wavelength number
@@ -79,12 +77,8 @@ def element_downloader(element, local_webpage=None):
 	for match in regex_sequence.finditer(html.read()):
 		spectra_append(match.groups()[0])
 
-	# Removing blanks, converting to float, converting to array
+	# Removing blanks, converting to float, converting to array, dividing by on in order to achieve correct units!
 	spectra = map(lambda line : float(regex_blanks.sub("",line)), spectra)
-
-	post_time = time.clock()
-	print 'Time used on predefining wrap: %s seconds' % (post_time - pre_time)
-	#====================================================================================
 
 	return spectra
 
@@ -97,47 +91,42 @@ def create_tones(input_values):
 	t, spectra, envelope, Hz = input_values
 	t_modified = 2*np.pi*Hz*t
 	tone_matrix = spectra[:,np.newaxis] * t_modified[np.newaxis,:]
-	tone = np.sum(envelope*np.sin(tone_matrix),axis=0)
+	tone = envelope*np.sum(np.sin(tone_matrix),axis=0)
 	return tone
 
-# def rydeberg(series, ):
-# 	"""
-# 	The Rydeberg formula for finding the spectra wavelength
-# 	"""
-# 	n1 = self.n1
-# 	n2 = linspace(n1+1,n1+11,11)
-# 	R = 1.097e1 # [m^-1]
-# 	return (R*(1./n1**2 - 1./n2**2))
+def rydeberg(series, lyman=False, balmer=False, Paschen=False):
+	"""
+	The Rydeberg formula for finding the spectra wavelength
+	"""
+	n1 = self.n1
+	n2 = linspace(n1+1,n1+11,11)
+	R = 1.097e1 # [m^-1]
+	return (R*(1./n1**2 - 1./n2**2))
 
-
-class Sound:
-	def __init__(self, element, local_webpage=None, filename=None, parallell=False, num_processors=4):
-		# Checking if we are to run in parallell
-		if parallell:
-			self.parallell = True
+class ElementSound:
+	def __init__(self, element, local_file=None, filename=None, parallel=False, num_processors=4):
+		# Checking if we are to run in parallel
+		if parallel:
+			self.parallel = True
 			self.num_processors = num_processors
 		else:
-			# Finish this bit(clean up for paralell/non-parallel)
-			self.parallell = False
+			self.parallel = False
 
-		if not element_search(element):
-			sys.exit('Element not found!') # Move this to cmd line arguments later on
+		# Creating filename
+		if not filename:
+			self.filename = "%s" % element
 		else:
-			# Creating filename
-			if not filename:
-				self.filename = "%s" % element
-			else:
-				self.filename = filename
+			self.filename = filename
 
-			# Downloading or rerieving element spectra data
-			if not local_webpage:
-				self.spectra = element_downloader(element)
-			else:
-				self.spectra = element_downloader(element,local_webpage)
+		# Downloading or retrieving element spectra data
+		if not local_file:
+			self.spectra = element_downloader(element)
+		else:
+			self.spectra = element_downloader(element,local_file)					
 
-	def create_sound(self, length=10, Hz=440, amplitude=0.1, sampling_rate=44100):
+	def create_sound(self, length=10, Hz=440, amplitude=0.01, sampling_rate=44100, convertion_factor=100, wavelength_cutoff=2.5e-1):
 		"""
-		Function for creating soundfile from experimental element spectra
+		Function for creating soundfile from experimental element spectra.
 
 		Default values:
 		Length: 		10 seconds
@@ -145,27 +134,26 @@ class Sound:
 		Amplitude:		0.01
 		Sampling rate:	44100
 		"""
-		if amplitude > 0.1:
+		if amplitude >= 0.1:
 			sys.exit('Change amplitude! %g is way to high!' % amplitude)
 
 		filename = self.filename
 		spectra = self.spectra
 
 		# Creating time vector and getting length of datapoints
-		N = length*sampling_rate
+		N = int(length*sampling_rate)
 		t = np.linspace(0,length,N)
 
 		# Setting up spectra and converting to audible spectrum		
-		convertion_factor = 10**-3 # Converting to audible spectrum
-		spectra = np.asarray(spectra)*convertion_factor
+		# convertion_factor = 10**-2 # Converting to audible spectrum
+		spectra = (1./np.asarray(spectra))*convertion_factor
+		if wavelength_cutoff:
+			spectra = np.asarray([i for i in spectra if i > wavelength_cutoff])
+		
 		spectra_length = len(spectra) 
 
-
 		# Creating envelope
-		# pre_time = time.clock()
 		envelope = self._envelope(N, sampling_rate, length, amplitude)
-		# post_time = time.clock()
-		# print 'Time used on creating envelope: %s seconds' % (post_time - pre_time)
 
 		# # Type 1 (OLD METHOD)
 		# pre_time = time.clock()
@@ -197,9 +185,9 @@ class Sound:
 		# post_time = time.clock()
 		# par_time = (post_time - pre_time)
 		# print 'Time used on creating sounds bytes(NEW METHOD - VECTORIZED & PARALLELIZED): %s seconds' % par_time
-		# print "OLD/VEC = %g \nOLD/PAR = %g" % (old_time/vec_time, old_time/par_time)
+		# print "OLD/VEC = %g \nOLD/PAR = %g \nVEC/PAR = %g" % (old_time/vec_time, old_time/par_time, vec_time / par_time)
 
-		if self.parallell:
+		if self.parallel:
 			num_processors = self.num_processors
 			input_values = zip(	np.split(t,num_processors),
 								[spectra for i in xrange(num_processors)],
@@ -212,8 +200,8 @@ class Sound:
 			tone = create_tones([t, spectra, envelope, Hz])
 
 		# Writing to file
-		write('Elementer/%s_%ssec.wav' % (filename, length), sampling_rate, tone)
-		print '%s_%ssec.wav written.' % (filename, length)
+		wavfile_write('Elementer/%s_%dsec.wav' % (filename, int(length)), sampling_rate, tone)
+		print '%s_%dsec.wav written.' % (filename, int(length))
 
 		self.tone, self.length = tone, length
 
@@ -222,13 +210,10 @@ class Sound:
 
 	def remove_beat(self, eps=1e-2):
 		"""
-		Removes beat frequencies that cause a beat destructely.
+		Removes beat frequencies that cause a beat destructively.
 		"""
-		# pre_time = time.clock()
 		spectra = self.spectra
 		self.spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
-		# post_time = time.clock()
-		# print 'Time used in list comprehension: %s seconds' % (post_time - pre_time)
 
 	def _envelope(self, N, sampling_rate, length, amplitude):
 		"""
@@ -262,26 +247,58 @@ class Sound:
 		return_code = subprocess.call(['afplay', audio_file])
 
 def main(args):
-	parser = argparse.ArgumentParser(prog='ElementSound v0.1', description='Program for converting atomic spectra to the audible spectrum')
-	print "Linje 262: legge til argparser"
-	parser.add_argument('')
+	parser = argparse.ArgumentParser(prog='ElementSound', description='Program for converting atomic spectra to the audible spectrum')
 
+	# Prints program version if prompted
+	parser.add_argument('--version', action='version', version='%(prog)s 0.1')
+
+	# Main argument, must have this one
+	parser.add_argument('element',						default=False, 	type=str,	nargs=1,	help='takes the type of element. E.g. He')
+
+	# Possible choices
+	parser.add_argument('-lf', 	'--local_file',			default=None,	type=str,				help='takes a .html file for an atomic spectra from nist.org')
+	parser.add_argument('-fn', 	'--filename',			default=None,	type=str,				help='output filename')
+	parser.add_argument('-p', 	'--parallel',			default=False,	action='store_const',	const=True, help='enables running in parallel')
+	parser.add_argument('-n', 	'--num_processors',		default=4,		type=int,				help='number of processors, default=4')
+	parser.add_argument('-ln', 	'--length',				default=10,		type=float,				help='length in seconds, default=10')
+	parser.add_argument('-hz',	'--hertz',				default=440,	type=int,				help='frequency, default=440')
+	parser.add_argument('-amp',	'--amplitude',			default=0.01,	type=float,				help='amplitude of track, default=0.01')
+	parser.add_argument('-sr',	'--sampling_rate',		default=44100,	type=int,				help='sampling rate, default=44100')
+	parser.add_argument('-cf',	'--convertion_factor',	default=100,	type=float,				help='factor to pitch-shift spectra by, default=100')
+	parser.add_argument('-wlc',	'--wavelength_cutoff',	default=2.5e-1,	type=float,				help='inverse wavelength to cutoff lower tones, default=2.5e-1.')
+
+	args = parser.parse_args()
+	element = args.element[0]
+	if not element_search(element):
+		sys.exit('Element %s not found.' % element)
+
+	Sound = ElementSound(element, args.local_file, args.filename, args.parallel, args.num_processors)
+	Sound.remove_beat()
+	Sound.create_sound(args.length, args.hertz, args.amplitude, args.sampling_rate, args.convertion_factor, args.wavelength_cutoff)
+
+	# pre_time = time.clock()
+	# test = ElementSound('H','H.html',parallel=True)
+	# # test = ElementSound('He','He_training.html',parallel=True)
+	# # test = ElementSound('Pu',parallel=True)
+	# test.remove_beat()
+	# test.create_sound(convertion_factor=100, Hz=880, wavelength_cutoff=1e-2)
+	# post_time = time.clock()
+	# print 'Time used on program: %s seconds' % (post_time - pre_time)
+
+if __name__ == '__main__':
+	# print """TO-DO LIST:
+	# [x]	Rework beat
+	# [x]	Rework envelope
+	# [x]	Vectorize main sound generator
+	# [x]	Parallelize
+	# [x]	Now correctly pitch-shifts wavelengths 
+	# [x]	Make it accessible from the command line
+	# []	Implement Rydeberg
+	# []	Final optimizations
+	# []	Download spectra files for all elements and store locally
+	# """
 	pre_time = time.clock()
-
-	test = Sound('He','He_training.html',parallell=True)
-	test.remove_beat()
-	test.create_sound()
-
+	main(sys.argv[1:])
 	post_time = time.clock()
 	print 'Time used on program: %s seconds' % (post_time - pre_time)
 
-if __name__ == '__main__':
-	print """TO-DO LIST:
-	[x]	Rework beat
-	[x]	Rework envelope
-	[x]	Vectorize main sound generator
-	[x]	Parallelize
-	[]	Make it accessible from the command line
-	[]	Implement Rydeberg
-	"""
-	main(sys.argv[1:])

@@ -55,8 +55,12 @@ def element_downloader(element, local_file=None):
 	Function to retrieve element wavelengths
 	"""
 	if local_file:
-		nist_webpage = local_file
-		html = open(nist_webpage, 'r')
+		if local_file.split(".")[0] == "html":
+			nist_webpage = local_file
+			html = open(nist_webpage, 'r')
+		else:
+			# Trying to get the file as an array
+			return np.fromfile(local_file)
 	else:
 		# sys.exit('Quiting in avoidance to have to download anything...')
 		nist_webpage = 'http://physics.nist.gov/cgi-bin/ASD/lines1.pl?spectra=%s&low_wl=&upp_wn=&upp_wl=&low_wn=&unit=1&de=0&java_window=3&java_mult=&format=0&line_out=0&en_unit=0&output=0&page_size=15&show_obs_wl=1&order_out=0&max_low_enrg=&show_av=3&max_upp_enrg=&tsb_value=0&min_str=&A_out=0&max_str=&allowed_out=1&min_accur=&min_intens=&submit=Retrieve+Data' % element
@@ -293,12 +297,11 @@ if __name__ == '__main__':
 	# [x]	Parallelize
 	# [x]	Now correctly pitch-shifts wavelengths 
 	# [x]	Make it accessible from the command line
+	# [x]	Download spectra files for all elements and store locally
 	# []	Implement Rydeberg
 	# []	Final optimizations
-	# []	Download spectra files for all elements and store locally
 	# """
 	pre_time = time.clock()
 	main(sys.argv[1:])
 	post_time = time.clock()
 	print 'Time used on program: %s seconds' % (post_time - pre_time)
-

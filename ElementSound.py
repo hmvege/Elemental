@@ -60,7 +60,7 @@ def element_downloader(element, local_file=None):
 			html = open(nist_webpage, 'r')
 		else:
 			# Trying to get the file as an array
-			return np.fromfile(local_file)
+			return np.loadtxt(local_file)
 	else:
 		# sys.exit('Quiting in avoidance to have to download anything...')
 		nist_webpage = 'http://physics.nist.gov/cgi-bin/ASD/lines1.pl?spectra=%s&low_wl=&upp_wn=&upp_wl=&low_wn=&unit=1&de=0&java_window=3&java_mult=&format=0&line_out=0&en_unit=0&output=0&page_size=15&show_obs_wl=1&order_out=0&max_low_enrg=&show_av=3&max_upp_enrg=&tsb_value=0&min_str=&A_out=0&max_str=&allowed_out=1&min_accur=&min_intens=&submit=Retrieve+Data' % element
@@ -125,18 +125,14 @@ class ElementSound:
 		# Downloading or retrieving element spectra data
 		if not local_file:
 			self.spectra = element_downloader(element)
+			print "Spectra retrieved from nist.org."
 		else:
-			self.spectra = element_downloader(element,local_file)					
+			self.spectra = element_downloader(element,local_file)
+			print "Spectra retrieved from local file %s." % local_file
 
 	def create_sound(self, length=10, Hz=440, amplitude=0.01, sampling_rate=44100, convertion_factor=100, wavelength_cutoff=2.5e-1):
 		"""
 		Function for creating soundfile from experimental element spectra.
-
-		Default values:
-		Length: 		10 seconds
-		Frequency: 		440Hz
-		Amplitude:		0.01
-		Sampling rate:	44100
 		"""
 		if amplitude >= 0.1:
 			sys.exit('Change amplitude! %g is way to high!' % amplitude)
@@ -237,19 +233,6 @@ class ElementSound:
 		x = np.linspace(0,np.pi,envelope_N)
 		return (1 - np.cos(x))/2.
 
-	def fourier(self):
-		t, tone = self.t, self.tone
-		fftomega0 = abs(fft.fft(tone))
-		plt.plot(fftomega0[0:int(len(fftomega0)/2.)])
-		plt.show()
-
-	def play(self):
-		import subprocess, os
-		CURRENT_PATH = os.getcwd()
-		audio_file = '%s/Elementer/%s_%ssec.wav' % (CURRENT_PATH, self.filename, self.length)
-		print 'Playing %s_%ssec.wav' % (self.filename, self.length)
-		return_code = subprocess.call(['afplay', audio_file])
-
 def main(args):
 	parser = argparse.ArgumentParser(prog='ElementSound', description='Program for converting atomic spectra to the audible spectrum')
 
@@ -270,6 +253,7 @@ def main(args):
 	parser.add_argument('-sr',	'--sampling_rate',		default=44100,	type=int,				help='sampling rate, default=44100')
 	parser.add_argument('-cf',	'--convertion_factor',	default=100,	type=float,				help='factor to pitch-shift spectra by, default=100')
 	parser.add_argument('-wlc',	'--wavelength_cutoff',	default=2.5e-1,	type=float,				help='inverse wavelength to cutoff lower tones, default=2.5e-1.')
+	parser.add_argument('-bt',  '--beat_cutoff', 		default=1e-2, 	type=float, 			help='removes one wavelength if two wavelengths have |lambda-lambda_0| > beat_cutoff, default=1e-2')
 
 	args = parser.parse_args()
 	element = args.element[0]
@@ -277,7 +261,7 @@ def main(args):
 		sys.exit('Element %s not found.' % element)
 
 	Sound = ElementSound(element, args.local_file, args.filename, args.parallel, args.num_processors)
-	Sound.remove_beat()
+	Sound.remove_beat(args.beat_cutoff)
 	Sound.create_sound(args.length, args.hertz, args.amplitude, args.sampling_rate, args.convertion_factor, args.wavelength_cutoff)
 
 	# pre_time = time.clock()

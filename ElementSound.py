@@ -135,7 +135,10 @@ class ElementSound:
 		Function for creating soundfile from experimental element spectra.
 		"""
 		if amplitude >= 0.1:
-			sys.exit('Change amplitude! %g is way to high!' % amplitude)
+			sys.exit("Change amplitude! %g is way to high!" % amplitude)
+
+		if length < 0.5:
+			sys.exit("Cannot create a sample of length less than 0.5 seconds.")
 
 		filename = self.filename
 		spectra = self.spectra
@@ -144,8 +147,7 @@ class ElementSound:
 		N = int(length*sampling_rate)
 		t = np.linspace(0,length,N)
 
-		# Setting up spectra and converting to audible spectrum		
-		# convertion_factor = 10**-2 # Converting to audible spectrum
+		# Setting up spectra and converting to audible spectrum
 		spectra = (1./np.asarray(spectra))*convertion_factor
 		if wavelength_cutoff:
 			spectra = np.asarray([i for i in spectra if i > wavelength_cutoff])
@@ -237,7 +239,7 @@ def main(args):
 	parser = argparse.ArgumentParser(prog='ElementSound', description='Program for converting atomic spectra to the audible spectrum')
 
 	# Prints program version if prompted
-	parser.add_argument('--version', action='version', version='%(prog)s 0.1')
+	parser.add_argument('--version', action='version', version='%(prog)s 0.9')
 
 	# Main argument, must have this one
 	parser.add_argument('element',						default=False, 	type=str,	nargs=1,	help='takes the type of element. E.g. He')
@@ -282,7 +284,7 @@ if __name__ == '__main__':
 	# [x]	Now correctly pitch-shifts wavelengths 
 	# [x]	Make it accessible from the command line
 	# [x]	Download spectra files for all elements and store locally
-	# []	Implement Rydeberg
+	# []	Implement the Rydeberg formula as a spectrum source
 	# []	Final optimizations
 	# """
 	pre_time = time.clock()

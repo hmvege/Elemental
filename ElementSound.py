@@ -1,5 +1,7 @@
 import re
+import os
 import sys
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import urllib2
@@ -60,7 +62,9 @@ def element_downloader(element, local_file=None):
 			html = open(nist_webpage, 'r')
 		else:
 			# Trying to get the file as an array
-			return np.loadtxt(local_file)
+			with warnings.catch_warnings():
+				warnings.simplefilter('ignore')
+				return np.loadtxt(local_file)
 	else:
 		# sys.exit('Quiting in avoidance to have to download anything...')
 		nist_webpage = 'http://physics.nist.gov/cgi-bin/ASD/lines1.pl?spectra=%s&low_wl=&upp_wn=&upp_wl=&low_wn=&unit=1&de=0&java_window=3&java_mult=&format=0&line_out=0&en_unit=0&output=0&page_size=15&show_obs_wl=1&order_out=0&max_low_enrg=&show_av=3&max_upp_enrg=&tsb_value=0&min_str=&A_out=0&max_str=&allowed_out=1&min_accur=&min_intens=&submit=Retrieve+Data' % element
@@ -95,7 +99,7 @@ def create_tones(input_values):
 	t, spectra, envelope, Hz = input_values
 	t_modified = 2*np.pi*Hz*t
 	tone_matrix = spectra[:,np.newaxis] * t_modified[np.newaxis,:]
-	tone = envelope*np.sum(np.sin(tone_matrix),axis=0)
+	tone = envelope*np.sum(np.sin(tone_matrix), axis=0)
 	return tone
 
 def rydeberg(series, lyman=False, balmer=False, Paschen=False):
@@ -109,6 +113,9 @@ def rydeberg(series, lyman=False, balmer=False, Paschen=False):
 
 class ElementSound:
 	def __init__(self, element, local_file=None, filename=None, parallel=False, num_processors=4):
+		"""
+		Initialization of class.
+		"""
 		# Checking if we are to run in parallel
 		if parallel:
 			self.parallel = True
@@ -125,10 +132,13 @@ class ElementSound:
 		# Downloading or retrieving element spectra data
 		if not local_file:
 			self.spectra = element_downloader(element)
+			self.check_spectras(element)
 			print "Spectra retrieved from nist.org."
 		else:
 			self.spectra = element_downloader(element,local_file)
+			self.check_spectras(element)
 			print "Spectra retrieved from local file %s." % local_file
+
 
 	def create_sound(self, length=10, Hz=440, amplitude=0.01, sampling_rate=44100, convertion_factor=100, wavelength_cutoff=2.5e-1):
 		"""
@@ -152,7 +162,7 @@ class ElementSound:
 		if wavelength_cutoff:
 			spectra = np.asarray([i for i in spectra if i > wavelength_cutoff])
 		
-		spectra_length = len(spectra) 
+		spectra_length = len(spectra)
 
 		# Creating envelope
 		envelope = self._envelope(N, sampling_rate, length, amplitude)
@@ -202,7 +212,11 @@ class ElementSound:
 			tone = create_tones([t, spectra, envelope, Hz])
 
 		# Writing to file
-		wavfile_write('Elementer/%s_%dsec.wav' % (filename, int(length)), sampling_rate, tone)
+		output_folder = 'sounds'
+		if not os.path.isdir(output_folder):
+			print 'Creating output folder %s' % output_folder
+			os.mkdir(output_folder)
+		wavfile_write('sounds/%s_%dsec.wav' % (filename, int(length)), sampling_rate, tone)
 		print '%s_%dsec.wav written.' % (filename, int(length))
 
 		self.tone, self.length = tone, length
@@ -212,10 +226,20 @@ class ElementSound:
 
 	def remove_beat(self, eps=1e-2):
 		"""
-		Removes beat frequencies that cause a beat destructively.
+		Removes beat frequencies that cause a beat destructively. Will incrementally remove spectra lines till the total number is below 1000 due to save time.
 		"""
+		max_spectras = 1000 # Warning: changing this variable beyond 1200 may cause computer slowdown
 		spectra = self.spectra
-		self.spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
+		temp_spectra = spectra
+
+		while len(spectra) > max_spectras:
+			temp_spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
+			spectra = temp_spectra
+			eps *= 1.1
+
+		self.spectra = spectra
+		# self.spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
+		print len(self.spectra)
 
 	def _envelope(self, N, sampling_rate, length, amplitude):
 		"""
@@ -231,9 +255,18 @@ class ElementSound:
 		return amplitude * envelope_array
 
 	def _envelope_function(self, envelope_N):
-		# Cosine envelope
+		"""
+		Cosine envelope
+		"""
 		x = np.linspace(0,np.pi,envelope_N)
 		return (1 - np.cos(x))/2.
+
+	def check_spectras(self, element):
+		"""
+		Helper function for checking if we have retrieved any available spectras.
+		"""
+		if len(self.spectra) == 0:
+			sys.exit('No atomic spectras available for %s' % element)
 
 def main(args):
 	parser = argparse.ArgumentParser(prog='ElementSound', description='Program for converting atomic spectra to the audible spectrum')
@@ -287,7 +320,7 @@ if __name__ == '__main__':
 	# []	Implement the Rydeberg formula as a spectrum source
 	# []	Final optimizations
 	# """
-	pre_time = time.clock()
+ 	pre_time = time.clock()
 	main(sys.argv[1:])
 	post_time = time.clock()
 	print 'Time used on program: %s seconds' % (post_time - pre_time)

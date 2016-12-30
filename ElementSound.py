@@ -238,8 +238,6 @@ class ElementSound:
 			eps *= 1.1
 
 		self.spectra = spectra
-		# self.spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
-		print len(self.spectra)
 
 	def _envelope(self, N, sampling_rate, length, amplitude):
 		"""

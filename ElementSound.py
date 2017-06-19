@@ -316,6 +316,7 @@ if __name__ == '__main__':
 	# [x]	Make it accessible from the command line
 	# [x]	Download spectra files for all elements and store locally
 	# []	Implement the Rydeberg formula as a spectrum source
+	# []	Make an option for listing possible elements
 	# []	Final optimizations
 	# """
  	pre_time = time.clock()

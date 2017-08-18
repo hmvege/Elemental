@@ -270,7 +270,7 @@ def main(args):
 	parser = argparse.ArgumentParser(prog='ElementSound', description='Program for converting atomic spectra to the audible spectrum')
 
 	# Prints program version if prompted
-	parser.add_argument('--version', action='version', version='%(prog)s 0.9')
+	parser.add_argument('--version', action='version', version='%(prog)s 0.9.2')
 
 	# Main argument, must have this one
 	parser.add_argument('element',						default=False, 	type=str,	nargs=1,	help='takes the type of element. E.g. He')
@@ -317,6 +317,7 @@ if __name__ == '__main__':
 	# [x]	Download spectra files for all elements and store locally
 	# []	Implement the Rydeberg formula as a spectrum source
 	# []	Make an option for listing possible elements
+	# []	Ensure that input file-name in spectra folder corresponds to element argument?
 	# []	Final optimizations
 	# """
  	pre_time = time.clock()

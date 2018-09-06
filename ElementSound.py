@@ -4,9 +4,11 @@ import sys
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-import urllib2
+# import urllib2 # Python 2
+from urllib.request import urlopen # Python 3
 import multiprocessing
 import argparse
+import numba as nb # For converting the main function to machine code
 from scipy.io.wavfile import write as wavfile_write
 
 import time # for benchmarking purposes
@@ -68,7 +70,8 @@ def element_downloader(element, local_file=None):
 	else:
 		# sys.exit('Quiting in avoidance to have to download anything...')
 		nist_webpage = 'http://physics.nist.gov/cgi-bin/ASD/lines1.pl?spectra=%s&low_wl=&upp_wn=&upp_wl=&low_wn=&unit=1&de=0&java_window=3&java_mult=&format=0&line_out=0&en_unit=0&output=0&page_size=15&show_obs_wl=1&order_out=0&max_low_enrg=&show_av=3&max_upp_enrg=&tsb_value=0&min_str=&A_out=0&max_str=&allowed_out=1&min_accur=&min_intens=&submit=Retrieve+Data' % element
-		html = urllib2.urlopen(nist_webpage)
+		# html = urllib2.urlopen(nist_webpage) # Python 2
+		html = urlopen(nist_webpage)
 
 	# Strings to match for in html-file
 	pre_string = '\<td class\=\"fix\"\>[\W]+' # The [\W]+ matches all whitespace characters leading up to the wavelength number
@@ -90,6 +93,13 @@ def element_downloader(element, local_file=None):
 
 	return spectra
 
+# @nb.jit(nb.types.float64[:](nb.types.float64[:],nb.types.float64[:],nb.types.float64[:],nb.types.float64))
+# def _ctone(t, spectra, envelope, Hz):
+# 	t_modified = 2*np.pi*Hz*t
+# 	tone_matrix = spectra[:,np.newaxis] * t_modified[np.newaxis,:]
+# 	return envelope*np.sum(np.sin(tone_matrix), axis=0)
+
+@nb.jit
 def create_tones(input_values):
 	"""
 	External function to use when parallelizing.
@@ -101,6 +111,7 @@ def create_tones(input_values):
 	tone_matrix = spectra[:,np.newaxis] * t_modified[np.newaxis,:]
 	tone = envelope*np.sum(np.sin(tone_matrix), axis=0)
 	return tone
+	# return _ctone(t, spectra, envelope, Hz)
 
 def rydeberg(series, lyman=False, balmer=False, Paschen=False):
 	"""
@@ -133,11 +144,11 @@ class ElementSound:
 		if not local_file:
 			self.spectra = element_downloader(element)
 			self.check_spectras(element)
-			print "Spectra retrieved from nist.org."
+			print ("Spectra retrieved from nist.org.")
 		else:
 			self.spectra = element_downloader(element,local_file)
 			self.check_spectras(element)
-			print "Spectra retrieved from local file %s." % local_file
+			print ("Spectra retrieved from local file %s." % local_file)
 
 
 	def create_sound(self, length=10, Hz=440, amplitude=0.01, sampling_rate=44100, convertion_factor=100, wavelength_cutoff=2.5e-1):
@@ -202,9 +213,9 @@ class ElementSound:
 		if self.parallel:
 			num_processors = self.num_processors
 			input_values = zip(	np.split(t,num_processors),
-								[spectra for i in xrange(num_processors)],
+								[spectra for i in range(num_processors)],
 								np.split(envelope,num_processors),
-								[Hz for i in xrange(num_processors)])
+								[Hz for i in range(num_processors)])
 			pool = multiprocessing.Pool(processes=num_processors)
 			results = pool.map(create_tones,input_values) #improve t by splitting into num_processors
 			tone = np.concatenate(results)
@@ -214,10 +225,10 @@ class ElementSound:
 		# Writing to file
 		output_folder = 'sounds'
 		if not os.path.isdir(output_folder):
-			print 'Creating output folder %s' % output_folder
+			print ('Creating output folder %s' % output_folder)
 			os.mkdir(output_folder)
 		wavfile_write('sounds/%s_%dsec.wav' % (filename, int(length)), sampling_rate, tone)
-		print '%s_%dsec.wav written.' % (filename, int(length))
+		print ('%s_%dsec.wav written.' % (filename, int(length)))
 
 		self.tone, self.length = tone, length
 
@@ -233,7 +244,7 @@ class ElementSound:
 		temp_spectra = spectra
 
 		while len(spectra) > max_spectras:
-			temp_spectra = [spectra[i] for i in xrange(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
+			temp_spectra = [spectra[i] for i in range(0,len(spectra)-1) if abs(spectra[i] - spectra[i+1]) > eps]
 			spectra = temp_spectra
 			eps *= 1.1
 
@@ -320,7 +331,7 @@ if __name__ == '__main__':
 	# []	Ensure that input file-name in spectra folder corresponds to element argument?
 	# []	Final optimizations
 	# """
- 	pre_time = time.clock()
+	pre_time = time.clock()
 	main(sys.argv[1:])
 	post_time = time.clock()
-	print 'Time used on program: %s seconds' % (post_time - pre_time)
+	print ('Time used on program: %s seconds' % (post_time - pre_time))

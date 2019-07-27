@@ -23,3 +23,6 @@ lyder.py
 simple_sound.py
 sound_of_elements.py
 spectra_downloader.py
+
+# Numba junk
+*__pycache__*

@@ -506,4 +506,4 @@ if __name__ == '__main__':
     pre_time = time.time()
     main(sys.argv[1:])
     post_time = time.time()
-    print('Time used on program: %s seconds' % (post_time - pre_time))
+    print('Time used on program: %.2f seconds' % (post_time - pre_time))

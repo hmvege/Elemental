@@ -24,5 +24,8 @@ simple_sound.py
 sound_of_elements.py
 spectra_downloader.py
 
+# Scratch/testing folder
+scratch
+
 # Numba junk
 *__pycache__*

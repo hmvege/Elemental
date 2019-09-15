@@ -18,6 +18,8 @@ import time  # for benchmarking purposes
 Program for converting atomic spectra to sound.
 """
 
+# TODO: create yml file for conda env
+
 # Periodic table
 PERIODIC_TABLE = [('Hydrogen', '1', 'H'), ('Helium', '2', 'He'),
                   ('Lithium', '3', 'Li'), ('Beryllium', '4', 'Be'),
@@ -261,7 +263,7 @@ class _Sound:
 
     def create_sound(self, length=10, Hz=440, amplitude=0.01,
                      sampling_rate=44100, convertion_factor=100,
-                     wavelength_cutoff=2.5e-1):
+                     wavelength_cutoff=2.5e-1, output_folder="sounds"):
         """
         Function for creating soundfile from experimental element spectra.
         """
@@ -271,8 +273,6 @@ class _Sound:
         if length < 0.5:
             sys.exit("Cannot create a sample of length less than 0.5 seconds.")
 
-        filename = self.filename
-
         # Creating time vector and getting length of datapoints
         N = int(length*sampling_rate)
         t = np.linspace(0, length, N)
@@ -281,8 +281,6 @@ class _Sound:
         spectra = (1./np.asarray(self.spectra))*convertion_factor
         if wavelength_cutoff:
             spectra = np.asarray([i for i in spectra if i > wavelength_cutoff])
-
-        spectra_length = len(spectra)
 
         # Creating envelope
         envelope = self._envelope(N, sampling_rate, length, amplitude)
@@ -300,14 +298,15 @@ class _Sound:
             tone = create_tones(t, spectra, envelope, Hz)
 
         # Writing to file
-        output_folder = 'sounds'
         if not os.path.isdir(output_folder):
             print('Creating output folder %s' % output_folder)
             os.mkdir(output_folder)
 
-        wavfile_write('sounds/%s_%dsec.wav' % (filename, int(length)),
-                      sampling_rate, tone)
-        print('%s_%dsec.wav written.' % (filename, int(length)))
+        filename = os.path.join(
+          output_folder, '%s_%dsec.wav' % (self.filename, int(length)))
+        
+        wavfile_write(filename, sampling_rate, tone)
+        print('%s written.' % filename)
 
         self.tone, self.length = tone, length
 
@@ -400,6 +399,9 @@ def main(args):
         '-fn', '--filename', default=None,
         type=str, help='output filename')
     element_parser.add_argument(
+        '-output_folder', default="sounds",
+        type=str, help='output folder')
+    element_parser.add_argument(
         '-p', '--parallel', default=False,
         action='store_const', const=True,
         help='enables running in parallel')
@@ -447,6 +449,9 @@ def main(args):
     rydeberg_parser.add_argument(
         '-fn', '--filename', default=None,
         type=str, help='output filename')
+    rydeberg_parser.add_argument(
+        '-output_folder', default="sounds",
+        type=str, help='output folder')
     rydeberg_parser.add_argument(
         '-p', '--parallel', default=False,
         action='store_const', const=True,
@@ -499,7 +504,8 @@ def main(args):
     Sound.remove_beat(args.beat_cutoff)
     Sound.create_sound(args.length, args.hertz, args.amplitude,
                        args.sampling_rate, args.convertion_factor,
-                       args.wavelength_cutoff)
+                       args.wavelength_cutoff,
+                       output_folder=args.output_folder)
 
 
 if __name__ == '__main__':

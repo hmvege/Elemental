@@ -15,7 +15,6 @@ import time  # for benchmarking purposes
 Program for converting atomic spectra to sound.
 """
 
-# TODO: create yml file for conda env
 
 @nb.njit(cache=True)
 def create_tones(t, spectra, envelope, Hz):
@@ -163,8 +162,8 @@ class _Sound:
             os.mkdir(output_folder)
 
         filename = os.path.join(
-          output_folder, '%s_%dsec.wav' % (self.filename, int(length)))
-        
+            output_folder, '%s_%dsec.wav' % (self.filename, int(length)))
+
         wavfile_write(filename, sampling_rate, tone)
         print('%s written.' % filename)
 
@@ -357,7 +356,8 @@ def main(args):
 
     if args.subparser == "element":
         element = args.element[0]
-        assert utils.element_search(element), ('Element %s not found.' % element)
+        assert utils.element_search(
+            element), ('Element %s not found.' % element)
         Sound = ElementSound(element, args.local_file,
                              args.filename, args.parallel, args.num_processors)
 

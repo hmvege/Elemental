@@ -171,6 +171,9 @@ class _Sound:
 
 
 class ElementSound(_Sound):
+    # For storing if we find spectras.
+    has_spectra = True
+
     def __init__(self, element, local_file=None, filename=None,
                  parallel=False, num_processors=4):
         """
@@ -187,11 +190,15 @@ class ElementSound(_Sound):
         # Downloading or retrieving element spectra data
         if not local_file:
             self.spectra = utils.element_downloader(element)
-            self.check_spectras(element)
+            if not self.check_spectras(element):
+                self.has_spectra = False
+                return
             print("Spectra retrieved from nist.org.")
         else:
             self.spectra = utils.element_downloader(element, local_file)
-            self.check_spectras(element)
+            if not self.check_spectras(element):
+                self.has_spectra = False
+                return
             print("Spectra retrieved from local file %s." % local_file)
 
     def check_spectras(self, element):
@@ -200,7 +207,9 @@ class ElementSound(_Sound):
         spectras.
         """
         if len(self.spectra) == 0:
-            sys.exit('No atomic spectras available for %s' % element)
+            print('No atomic spectras available for %s' % element)
+            return False
+        return True
 
 
 class Rydeberg(_Sound):
@@ -360,6 +369,8 @@ def main(args):
             element), ('Element %s not found.' % element)
         Sound = ElementSound(element, args.local_file,
                              args.filename, args.parallel, args.num_processors)
+        if not Sound.has_spectra:
+            exit("Exiting: no spectra found.")
 
     if args.subparser == "rydeberg":
         Sound = Rydeberg(args.n1, args.n2_max, args.filename,

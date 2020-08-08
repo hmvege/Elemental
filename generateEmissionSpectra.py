@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 from scipy.interpolate import interp1d
+from lib.utils import element_search
+import ElementSound as es
 
 
 CIE = np.array([
@@ -70,7 +72,7 @@ class ColorSystem:
             [self.M[1, 0]*self.M[2, 1] - self.M[1, 1]*self.M[2, 0],
              self.M[0, 1]*self.M[2, 0] - self.M[0, 0]*self.M[2, 1],
              self.M[0, 0]*self.M[1, 1] - self.M[0, 1]*self.M[1, 0]],
-            ], dtype=float)
+        ], dtype=float)
 
         # print(self.M_inv)
 
@@ -129,9 +131,9 @@ def generate_color_systems():
                                0.30, 0.60, 0.15, 0.06, *IlluminantD65,
                                GAMMA_REC709)
     AdobeRBG1998System = ColorSystem("Adobe RBG 1998", 0.64, 0.33,
-                               0.21, 0.71, 0.15, 0.06, *IlluminantD65,
-                               GAMMA_REC709)
-    SRGBSystem = ColorSystem("sRGB", 0.64, 0.33, 0.3, 0.6, 0.15, 0.06, 
+                                     0.21, 0.71, 0.15, 0.06, *IlluminantD65,
+                                     GAMMA_REC709)
+    SRGBSystem = ColorSystem("sRGB", 0.64, 0.33, 0.3, 0.6, 0.15, 0.06,
                              *IlluminantD65, GAMMA_REC709)
 
     return {
@@ -249,21 +251,16 @@ def constrain_rgb(r, g, b):
         return True, np.array([r, g, b])
     return False, np.array([r, g, b])
 
-# TODO: split main() into separate tests
-# TODO: load spectras
-# TODO: generate spectras
-
-
 
 def _create_expanded_spectrum_input(N_new):
     """Expands the color mixing spectrum.
-    
+
     Uses the CIE mixing value and interpolates them to a new size defined
     by the input.
-    
+
     Arguments:
         N_new {int} -- new CIE mixing size.
-    
+
     Returns:
         np.ndarray, np.ndarray, np.ndarray -- x array, x new array, expaned CIE 3xN_new array
     """
@@ -280,9 +277,9 @@ def _create_expanded_spectrum_input(N_new):
 
 def test_color_system(cs):
     """Creates the color spectrum mixing.
-    
+
     Using a ColorSystem input to create the spectrum mixing of it.
-    
+
     Arguments:
         cs {ColorSystem} -- color system mixing.
     """
@@ -308,9 +305,9 @@ def test_color_system(cs):
         bb_radiations[i] = np.array([r, g, b])
 
     plt.figure()
-    plt.plot(temperatures, bb_radiations[:,0], "--", color="r", label="Red")
-    plt.plot(temperatures, bb_radiations[:,1], "--", color="g", label="Green")
-    plt.plot(temperatures, bb_radiations[:,2], "--", color="b", label="Blue")
+    plt.plot(temperatures, bb_radiations[:, 0], "--", color="r", label="Red")
+    plt.plot(temperatures, bb_radiations[:, 1], "--", color="g", label="Green")
+    plt.plot(temperatures, bb_radiations[:, 2], "--", color="b", label="Blue")
     plt.xlabel(r"Temperature $[K]$")
     plt.legend()
     plt.show()
@@ -318,7 +315,7 @@ def test_color_system(cs):
 
 def test_create_color_mixing():
     """Creates the color mixing spectrum.
-    
+
     Performs a extrapolation of the color mixing spectrum and creates a
     figure of it.
     """
@@ -326,7 +323,7 @@ def test_create_color_mixing():
     wl_start = 380
     wl_stop = 780
 
-    # Expanding 
+    # Expanding
     x, x_dense, CIE_expanded = _create_expanded_spectrum_input(N_wls)
 
     print("Shape before interpolation:", CIE.shape)
@@ -341,32 +338,15 @@ def test_create_color_mixing():
     plt.show()
 
 
-def test_create_visible_spectrum():
-    """Creates the visible spectrum.
-    
-    Creates the visible spectrum(rainbow) from 380 nm to 780 nm.
-    """
+def _setup_visible_spectrum(wavelengths, color_system="SRGB", temperature=3000):
+    """Helper function for seting up a visible rainbow spectrum."""
 
-    # Parameters
-    N_wls = 1500
-    wl_start = 380
-    wl_stop = 780
+    # Expanding
+    x, x_dense, CIE_expanded = _create_expanded_spectrum_input(wavelengths.shape[0])
 
-    # Expanding 
-    x, x_dense, CIE_expanded = _create_expanded_spectrum_input(N_wls)
-
-    wavelengths = np.linspace(wl_start, wl_stop, CIE_expanded.shape[0])
-    xyz = CIE_color_matching(
-        T=3000, wavelengths=wavelengths,
-        _CIE=CIE_expanded)
-    # rgb = xyz_to_rgb(AdobeRBG1998System, xyz)
-    rgb = xyz_to_rgb(COLOR_SYSTEMS["SRGB"], xyz)
-
-    # Mixing plot
-    fig0, ax0 = plt.subplots(1, 1)
-    ax0.plot(xyz)
-    ax0.plot(rgb, "--")
-    ax0.legend(["x", "y", "z", "r", "b", "g"])
+    xyz = CIE_color_matching(T=temperature, wavelengths=wavelengths,
+                             _CIE=CIE_expanded)
+    rgb = xyz_to_rgb(COLOR_SYSTEMS[color_system], xyz)
 
     rgb_array = np.empty(rgb.shape, dtype=float)
     for i in range(rgb.shape[0]):
@@ -376,31 +356,157 @@ def test_create_visible_spectrum():
         else:
             rgb_array[i] = norm_rgb(*rgb[i])
 
+    return x, x_dense, CIE_expanded, xyz, rgb, rgb_array
+
+
+def _expand_rgb(rgb_array, smoothing=None, N=100):
+    """Expands the RBG so it can be fit into an image."""
     x = np.linspace(0, 1, rgb_array.shape[0])
-    smoothing = 4*(-(x-0.5)**2 + 0.25)
 
     # Expands the RGB value to cover the full matrix.
-    rgb_m = np.empty((100,*rgb_array.shape), dtype=float)
+    rgb_m = np.empty((N, *rgb_array.shape), dtype=float)
     for i in range(rgb_array.shape[0]):
         for j in range(rgb_m.shape[0]):
-            rgb_m[j, i] = rgb_array[i] * smoothing[i]
+            if not isinstance(smoothing, type(None)):
+                rgb_m[j, i] = rgb_array[i] * smoothing[i]
+            else:
+                rgb_m[j, i] = rgb_array[i]
+
+    return rgb_m
+
+
+def test_create_visible_spectrum():
+    """Creates the visible spectrum.
+
+    Creates the visible spectrum(rainbow) from 380 nm to 780 nm.
+    """
+
+    # Parameters
+    N = 100 # number of y pixels
+    N_wls = 1500
+    wl_start = 380
+    wl_stop = 780
+    wavelengths = np.linspace(wl_start, wl_stop, N_wls)
+
+    x, x_dense, CIE_expanded, xyz, rgb, rgb_array = \
+        _setup_visible_spectrum(wavelengths)
+
+    # Mixing plot
+    fig0, ax0 = plt.subplots(1, 1)
+    ax0.plot(xyz)
+    ax0.plot(rgb, "--")
+    ax0.legend(["x", "y", "z", "r", "b", "g"])
+
+    # Expands rgb to full image and smooths
+    x = np.linspace(0, 1, rgb_array.shape[0])
+    smoothing = 4*(-(x-0.5)**2 + 0.25)
+    rgb_m = _expand_rgb(rgb_array, smoothing, N)
 
     # Rainbow spectra plot
     wl_labels = ["%.1f" % i for i in wavelengths[::100]]
     fig1, ax1 = plt.subplots(1, 1)
     ax1.imshow(rgb_m*0.75)
-    ax1.set_xticks(np.linspace(0, rgb_m.shape[1] - 1, len(wl_labels)), 
-               wl_labels)
+    ax1.set_xticks(np.linspace(0, rgb_m.shape[1] - 1, len(wl_labels)),
+                   wl_labels)
 
     plt.show()
+
+
+def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
+    """Generates emission spectra.
+    
+    Generates emission spectra based on observed emission spectra. Attempts to moderate the strength of a line by using the intensity.
+    
+    Arguments:
+        folder_path {str} -- folder path to spectras.
+    """
+
+    # Parameters
+    N = 100
+    N_wls = 1500
+    wl_start = 380
+    wl_stop = 780
+    wavelengths = np.linspace(wl_start, wl_stop, N_wls)
+
+    x, x_dense, CIE_expanded, xyz, rgb, rgb_array = \
+        _setup_visible_spectrum(wavelengths)
+
+    x = np.linspace(0, 1, rgb_array.shape[0])
+    smoothing = 4*(-(x-0.5)**2 + 0.25)
+    rgb_m = _expand_rgb(rgb_array, smoothing, N=N)
+
+    # Rainbow spectra plot
+    wl_labels = ["%.1f" % i for i in wavelengths[::100]]
+
+    if not os.path.isdir(output_folder):
+        print("> mkdir %s" % output_folder)
+        os.mkdir(output_folder)
+
+    for element_file in os.listdir(folder_path):
+
+        if element_file.startswith("."):
+            continue
+
+        element = element_search(element_file.split(".")[0])
+        assert element != False, "element not found: %s" % element
+        fpath = os.path.join(folder_path, element_file)
+
+        # TEMP
+        if element != "H":
+            continue
+
+        Sound = es.ElementSound(element, 
+                                local_file=fpath,
+                                filename=element, 
+                                parallel=True, 
+                                num_processors=8)
+
+        if not Sound.has_spectra:
+            print("No spectras exist for %s" % element)
+            continue
+
+        Sound.remove_beat(1e-2)
+        # Sound.create_sound(length=10, Hz=440, amplitude=0.01,
+        #                    sampling_rate=44100, convertion_factor=100,
+        #                    wavelength_cutoff=2.5e-1, output_folder=output_folder)
+        # print("Created sound for %s at %s" % (element, output_folder))
+
+        spectra_wl, spectra_int = Sound.spectra[:,0], Sound.spectra[:,1]
+
+        spectra_wl = spectra_wl[wl_start<spectra_wl]
+        spectra_wl = spectra_wl[spectra_wl<wl_stop]
+        print(spectra_wl)
+        # TODO: split up spectra wl - fortsett her!!
+
+        fig1, ax1 = plt.subplots(1, 1)
+        # ax1.imshow(rgb_m*0.75)
+        # ax1.set_xticks(np.linspace(0, rgb_m.shape[1] - 1, len(wl_labels)),
+        #                wl_labels)
+
+        res = _setup_visible_spectrum(spectra_wl)
+        rgb_spectra = _expand_rgb(res[-1])
+
+        ax1.imshow(rgb_spectra)
+
+        plt.show()
+
+        exit("Exits after generating a single sound.")
+
+
+
+# TODO: load spectras
+# TODO: generate spectras
 
 
 def main():
     """Runs basic tests."""
 
     # test_color_system(COLOR_SYSTEMS["SMPTE"])
-    test_create_visible_spectrum()
+    # test_create_visible_spectrum()
     # test_create_color_mixing()
+
+    generateEmissionSpectra("spectras2")
+
 
 if __name__ == '__main__':
     main()

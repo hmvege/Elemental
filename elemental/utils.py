@@ -67,7 +67,7 @@ PERIODIC_TABLE = [('Hydrogen', '1', 'H'), ('Helium', '2', 'He'),
 
 
 def element_downloader(element, local_file=None, return_fmt="array"):
-    """Function to retrieve element wavelengths. 
+    """Function to retrieve element wavelengths.
 
     Retrieves the element from either a local file or the NIST webpage.
 

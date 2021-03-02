@@ -1,13 +1,12 @@
 import os
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import multiprocessing as mp
 import argparse
 import numba as nb  # For converting the main function to machine code
 from scipy.io.wavfile import write as wavfile_write
-import abc
-import lib.utils as utils
+
+from .utils import element_downloader, print_all_elements, element_search
 
 import time  # for benchmarking purposes
 
@@ -170,7 +169,7 @@ class _Sound:
         self.tone, self.length = tone, length
 
 
-class ElementSound(_Sound):
+class Elemental(_Sound):
     # For storing if we find spectras.
     has_spectra = True
 
@@ -189,13 +188,13 @@ class ElementSound(_Sound):
 
         # Downloading or retrieving element spectra data
         if not local_file:
-            self.spectra = utils.element_downloader(element)
+            self.spectra = element_downloader(element)
             if not self.check_spectras(element):
                 self.has_spectra = False
                 return
             print("Spectra retrieved from nist.org.")
         else:
-            self.spectra = utils.element_downloader(element, local_file)
+            self.spectra = element_downloader(element, local_file)
             if not self.check_spectras(element):
                 self.has_spectra = False
                 return
@@ -227,6 +226,8 @@ class Rydeberg(_Sound):
         assert n1_series >= 1, (
             "Principal quantm number n1 must be larger than 1.")
 
+        assert n1_series < n2_max, "n1 must be less than n2."
+
         if n2_max > 15:
             print("Warning: %d > 15 will give poor results!" % n2_max)
 
@@ -235,13 +236,9 @@ class Rydeberg(_Sound):
         self.spectra = np.array(self.spectra).flatten()
 
 
-class Spectrum:
-    pass
-
-
 def main(args):
     parser = argparse.ArgumentParser(
-        prog='ElementSound',
+        prog='Elemental',
         description=('Program for converting atomic spectra to '
                      'the audible spectrum'))
 
@@ -360,15 +357,15 @@ def main(args):
     args = parser.parse_args()
 
     if args.list:
-        utils.print_all_elements()
+        print_all_elements()
         return
 
     if args.subparser == "element":
         element = args.element[0]
-        assert utils.element_search(
+        assert element_search(
             element), ('Element %s not found.' % element)
-        Sound = ElementSound(element, args.local_file,
-                             args.filename, args.parallel, args.num_processors)
+        Sound = Elemental(element, args.local_file,
+                          args.filename, args.parallel, args.num_processors)
         if not Sound.has_spectra:
             exit("Exiting: no spectra found.")
 

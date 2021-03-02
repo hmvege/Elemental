@@ -12,3 +12,5 @@ Example usage:
 TODO:
 - add option to create emission spectra images.
 - check if one can retrieve the intensity from the energy in a transition.
+- add setup.py
+

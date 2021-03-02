@@ -433,10 +433,21 @@ def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
 
     x = np.linspace(0, 1, rgb_array.shape[0])
     smoothing = 4*(-(x-0.5)**2 + 0.25)
-    rgb_m = _expand_rgb(rgb_array, smoothing, N=N)
+    rgb_m = _expand_rgb(rgb_array, smoothing=smoothing, N=N)
+
+    fig0, ax0 = plt.subplots(1, 1)
+    ax0.plot(rgb_array[:,0])
+    ax0.plot(rgb_array[:,1])
+    ax0.plot(rgb_array[:,2])
+    ax0.set_title("Wavelength to RGB")
+    plt.show()
+
+    exit(1)
 
     # Rainbow spectra plot
     wl_labels = ["%.1f" % i for i in wavelengths[::100]]
+
+    wl_to_index = interp1d(wavelengths, np.arange(len(wavelengths)))
 
     if not os.path.isdir(output_folder):
         print("> mkdir %s" % output_folder)
@@ -473,20 +484,92 @@ def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
 
         spectra_wl, spectra_int = Sound.spectra[:,0], Sound.spectra[:,1]
 
+        # Filters out non-visible lines
         spectra_wl = spectra_wl[wl_start<spectra_wl]
         spectra_wl = spectra_wl[spectra_wl<wl_stop]
-        print(spectra_wl)
-        # TODO: split up spectra wl - fortsett her!!
 
-        fig1, ax1 = plt.subplots(1, 1)
-        # ax1.imshow(rgb_m*0.75)
-        # ax1.set_xticks(np.linspace(0, rgb_m.shape[1] - 1, len(wl_labels)),
-        #                wl_labels)
+        # Interpolates to get spectra indexes. We use the interpolator to 
+        # retrieve the spectras nearest indexes in floats.
+        spectra_ids = wl_to_index(spectra_wl)
+        print("spectra_wl", spectra_wl)
+        print("spectra_ids", spectra_ids)
+        print(spectra_ids.shape)
+        exit(1)
+        print(np.floor(spectra_ids[0]), np.ceil(spectra_ids[0]))
+
+        # Sets up interpolation points
+        weights_ids0 = list(map(int, np.floor(spectra_ids)))
+        weights_ids1 = list(map(int, np.ceil(spectra_ids)))
+
+        # Removes lines which is too close to each other to be seen.
+        ids_to_pop = []
+        spectra_wl_updated = []
+        for i in range(spectra_wl.shape[0]):
+            if weights_ids0[i] == weights_ids0[i-1]:
+                ids_to_pop.append(i)
+            else:
+                spectra_wl_updated.append(spectra_wl[i])
+
+        # Removes all weights for wl's no longer in use
+        for i in reversed(ids_to_pop):
+            del weights_ids0[i]
+            del weights_ids1[i]
+
+        # Updates the spectra wavelengths for the element
+        spectra_wl = np.array(spectra_wl_updated)
+
+        # Sets up the weights to use for spectra_wl
+        weights = (spectra_ids - np.floor(spectra_ids)) / \
+            (np.ceil(spectra_ids) - np.floor(spectra_ids))
+
+        rbg_spectra = rgb_m * 0.5
+        # rbg_spectra = np.zeros_like(rbg_spectra) # Temp, setting spectra to be dark
+
+        print(spectra_wl.shape)
+        exit("Jeppssss")
 
         res = _setup_visible_spectrum(spectra_wl)
-        rgb_spectra = _expand_rgb(res[-1])
+        print("OK here??")
+        print(res[-1])
+        exit(1)
+        ids = []
+        for i_wl in range(res[-1].shape[0]):
 
-        ax1.imshow(rgb_spectra)
+            f, ax = plt.subplots(1, 1)
+            for j in range(res[-1].shape[1]):
+                # print(np.abs(rgb_array[:,j]-res[-1][i_wl, j]))
+                i = np.where(np.abs(rgb_array[:,j]-res[-1][i_wl, j]))
+
+            #     print(i)
+                ax.plot(np.abs(rgb_array[:,j]-res[-1][i_wl, j]))
+            plt.show()
+
+
+            exit(1)
+
+        print(res[-1].shape)
+        print(_expand_rgb(res[-1]).shape)
+        print(np.rollaxis(_expand_rgb(res[-1]),1).shape)
+
+        for i, j, w, wl_color in zip(weights_ids0, weights_ids1, weights,
+                                     np.rollaxis(_expand_rgb(res[-1]), 1)):
+            rbg_spectra[:,i,:] = wl_color * w
+            rbg_spectra[:,j,:] = wl_color * (1 - w)
+
+        exit(1)
+
+
+        # TODO: det som må interpoleres er at en må finne der res[-1] passer inn i rgb_array
+
+        fig1, ax1 = plt.subplots(1, 1)
+        ax1.imshow(rbg_spectra)
+        ax1.set_xticks(np.linspace(0, rgb_m.shape[1] - 1, len(wl_labels)))
+        ax1.set_xticklabels(wl_labels)
+
+        # res = _setup_visible_spectrum(spectra_wl)
+        # rgb_spectra = _expand_rgb(res[-1])
+
+        # ax1.imshow(rgb_spectra)
 
         plt.show()
 

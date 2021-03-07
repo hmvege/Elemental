@@ -414,9 +414,9 @@ def test_create_visible_spectrum():
 
 def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
     """Generates emission spectra.
-    
+
     Generates emission spectra based on observed emission spectra. Attempts to moderate the strength of a line by using the intensity.
-    
+
     Arguments:
         folder_path {str} -- folder path to spectras.
     """
@@ -466,10 +466,10 @@ def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
         if element != "H":
             continue
 
-        Sound = es.ElementSound(element, 
+        Sound = es.ElementSound(element,
                                 local_file=fpath,
-                                filename=element, 
-                                parallel=True, 
+                                filename=element,
+                                parallel=True,
                                 num_processors=8)
 
         if not Sound.has_spectra:
@@ -488,7 +488,7 @@ def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
         spectra_wl = spectra_wl[wl_start<spectra_wl]
         spectra_wl = spectra_wl[spectra_wl<wl_stop]
 
-        # Interpolates to get spectra indexes. We use the interpolator to 
+        # Interpolates to get spectra indexes. We use the interpolator to
         # retrieve the spectras nearest indexes in floats.
         spectra_ids = wl_to_index(spectra_wl)
         print("spectra_wl", spectra_wl)

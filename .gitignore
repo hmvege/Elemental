@@ -27,5 +27,12 @@ spectra_downloader.py
 # Scratch/testing folder
 scratch
 
+# virtual env
+venv
+
+# pip junk
+.eggs
+*egg-info
+
 # Numba junk
 *__pycache__*

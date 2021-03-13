@@ -412,7 +412,7 @@ def test_create_visible_spectrum():
     plt.show()
 
 
-def generateEmissionSpectra(folder_path, output_folder="emission_spectras"):
+def generate_emission_spectra(folder_path, output_folder="emission_spectras"):
     """Generates emission spectra.
 
     Generates emission spectra based on observed emission spectra. Attempts to moderate the strength of a line by using the intensity.
@@ -588,7 +588,7 @@ def main():
     # test_create_visible_spectrum()
     # test_create_color_mixing()
 
-    generateEmissionSpectra("spectras2")
+    generate_emission_spectra("spectras2")
 
 
 if __name__ == '__main__':

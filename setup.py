@@ -5,9 +5,7 @@ PACKAGE_NAME = "elemental"
 setup(
     name=PACKAGE_NAME,
     version=0.1,
-    description=(
-        "A tool for producing sound based off on atomic spectra.",
-    ),
+    description=("A tool for producing sound based off on atomic spectra.",),
     author="Mathias Vege",
     license="MIT",
     packages=[
@@ -28,6 +26,7 @@ setup(
         "console_scripts": [
             "elemental=elemental.cli:elemental",
             "rydeberg=elemental.cli:rydeberg",
+            "download_spectra=elemental.cli:download_spectra",
         ]
     },
 )

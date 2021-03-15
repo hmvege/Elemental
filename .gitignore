@@ -6,6 +6,9 @@
 *.wav
 *.html
 
+# Ignore movies
+*.mp4
+
 # Junk
 .DS_Store
 
@@ -36,3 +39,9 @@ venv
 
 # Numba junk
 *__pycache__*
+
+# Various production folders
+converted_sounds_folder
+generated_emission_spectras
+output_mp4
+test-run-*

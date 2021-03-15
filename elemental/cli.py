@@ -9,7 +9,7 @@ from .utils import element_search
 
 
 def default_sound_options(function):
-    """Method containing common decorators for elemental and rydeberg."""
+    """Method containing common decorators for elemental and Rydeberg."""
     function = click.option(
         "-o",
         "--output_folder",
@@ -86,6 +86,22 @@ def default_sound_options(function):
             "|lambda-lambda_0| > beat_cutoff"
         ),
     )(function)
+    function = click.option(
+        "-ev",
+        "--envelope_length",
+        type=float,
+        default=0.2,
+        show_default=True,
+        help="Length of the envelope",
+    )(function)
+    function = click.option(
+        "-v",
+        "--verbose",
+        default=False,
+        show_default=True,
+        is_flag=True,
+        help="More verbose run.",
+    )(function)
     return function
 
 
@@ -112,16 +128,21 @@ def elemental(
     convertion_factor: float,
     wavelength_cutoff: float,
     beat_cutoff: float,
+    envelope_length: float,
+    verbose: bool,
 ):
     """Generates audible spectra for given element. To run, specify an element
     by its periodic table name, e.g. 'U' for Uranium.
     """
 
-    pre_time = time.time()
+    if verbose:
+        pre_time = time.time()
 
     assert element_search(element), f"Element {element} not found."
 
-    Sound = Elemental(element, local_elem_file, parallel, num_processors)
+    Sound = Elemental(
+        element, local_elem_file, parallel, num_processors, verbose
+    )
 
     if not Sound.has_spectra:
         raise click.BadParameter("No spectra found.")
@@ -134,11 +155,13 @@ def elemental(
         sampling_rate,
         convertion_factor,
         wavelength_cutoff,
-        output_folder=output_folder,
+        output_folder=Path(output_folder),
+        envelope_length=envelope_length,
     )
 
-    post_time = time.time()
-    print("Time used on program: %.2f seconds" % (post_time - pre_time))
+    if verbose:
+        post_time = time.time()
+        print("Time used on program: %.2f seconds" % (post_time - pre_time))
 
 
 @click.command()
@@ -165,6 +188,8 @@ def rydeberg(
     convertion_factor: float,
     wavelength_cutoff: float,
     beat_cutoff: float,
+    envelope_length: float,
+    verbose: bool,
 ):
     """Generates audible spectra based off the Rydeberg formula.
 
@@ -172,9 +197,10 @@ def rydeberg(
     from emission between those two.
     """
 
-    pre_time = time.time()
+    if verbose:
+        pre_time = time.time()
 
-    Sound = Rydeberg(n1, n2, parallel, num_processors)
+    Sound = Rydeberg(n1, n2, parallel, num_processors, verbose)
 
     Sound.remove_beat(beat_cutoff)
     Sound.create_sound(
@@ -184,11 +210,13 @@ def rydeberg(
         sampling_rate,
         convertion_factor,
         wavelength_cutoff,
-        output_folder=output_folder,
+        output_folder=Path(output_folder),
+        envelope_length=envelope_length,
     )
 
-    post_time = time.time()
-    print("Time used on program: %.2f seconds" % (post_time - pre_time))
+    if verbose:
+        post_time = time.time()
+        print("Time used on program: %.2f seconds" % (post_time - pre_time))
 
 
 @click.command()

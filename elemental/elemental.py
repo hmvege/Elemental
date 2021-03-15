@@ -2,7 +2,7 @@ import multiprocessing as mp
 from pathlib import Path
 from typing import Tuple
 
-import numba as nb  # For converting the main function to machine code
+import numba as nb
 import numpy as np
 from scipy.io.wavfile import write as wavfile_write
 
@@ -34,10 +34,9 @@ def create_tones(
     """
     t_modified = (2 * np.pi * Hz) * t
 
-    tone_matrix = np.outer(spectra, t_modified)
-    tone = np.zeros(tone_matrix.shape[1])
-    for i in range(tone_matrix.shape[0]):
-        tone += np.sin(tone_matrix[i])
+    tone = np.zeros(t_modified.shape[0])
+    for i in range(spectra.shape[0]):
+        tone += np.sin(spectra[i]*t_modified)
 
     return envelope * tone
 
@@ -103,13 +102,28 @@ def rydeberg(n1: int, n2_max: int = 10) -> np.ndarray:
 
 
 class _Sound:
-    def __init__(self, parallel: bool = False, num_processors: int = 4):
+    spectra: np.ndarray
+
+    def __init__(
+        self,
+        parallel: bool = False,
+        num_processors: int = 4,
+        verbose: bool = True,
+    ):
+        """Base initializer.
+
+        Arguments:
+            parallel {bool} -- flag for toggling parallel running.
+            num_processors {int} -- number of processors to use in running.
+            verbose {bool} -- more verbose run.
+        """
         # Checking if we are to run in parallel
         if parallel:
             self.parallel = True
             self.num_processors = num_processors
         else:
             self.parallel = False
+        self.verbose = verbose
 
     def remove_beat(self, eps: float = 1e-2):
         """
@@ -131,20 +145,24 @@ class _Sound:
                 for i in range(0, len(spectra) - 1)
                 if abs(spectra[i] - spectra[i + 1]) > eps
             ]
-            spectra = temp_spectra
+            spectra = np.asarray(temp_spectra)
             eps *= 1.1
 
         self.spectra = spectra
 
     def _envelope(
-        self, N: int, sampling_rate: int, length: float, amplitude: float
-    ) -> np.array:
+        self,
+        N: int,
+        sampling_rate: int,
+        length: float,
+        amplitude: float,
+        envelope_length: float,
+    ) -> np.ndarray:
         """
         Envelope for 'smoothing' out the beginning and end of the signal.
         Also sets the sound amplitude.
         """
-        envelope_time = 0.2  # seconds
-        envelope_N = int(sampling_rate * envelope_time)
+        envelope_N = int(sampling_rate * envelope_length)
         envelope_array = np.ones(N)
         envelope = self._envelope_function(envelope_N)
         envelope_array[:envelope_N] *= envelope
@@ -163,12 +181,13 @@ class _Sound:
 
     def create_sound(
         self,
-        length: int = 10,
+        length: float = 10,
         hz: int = 440,
         amplitude: float = 0.01,
         sampling_rate: int = 44100,
-        convertion_factor: int = 100,
+        convertion_factor: float = 100,
         wavelength_cutoff: float = 2.5e-1,
+        envelope_length: float = 0.2,
         output_folder: Path = Path("sounds"),
     ):
         """
@@ -183,17 +202,25 @@ class _Sound:
                 f"seconds({length} is provided)."
             )
 
-        # Creating time vector and getting length of datapoints
+        # Creating time vector and getting length of data points
         N = int(length * sampling_rate)
+
+        # Ensures that we get an even split among the processors.
+        if self.parallel:
+            if N % self.num_processors != 0:
+                N = ((N // self.num_processors) + 1) * self.num_processors
+
         t = np.linspace(0, length, N)
 
         # Setting up spectra and converting to audible spectrum
-        spectra = (1.0 / np.asarray(self.spectra)) * convertion_factor
+        spectra = (1.0 / self.spectra) * convertion_factor
         if wavelength_cutoff:
             spectra = np.asarray([i for i in spectra if i > wavelength_cutoff])
 
         # Creating envelope
-        envelope = self._envelope(N, sampling_rate, length, amplitude)
+        envelope = self._envelope(
+            N, sampling_rate, length, amplitude, envelope_length
+        )
 
         if self.parallel:
             num_processors = self.num_processors
@@ -217,22 +244,37 @@ class _Sound:
         filepath = output_folder / f"{self.filename}_{int(length)}sec.wav"
 
         wavfile_write(filepath, sampling_rate, tone)
-        print(f"{filepath} written.")
+        if self.verbose:
+            print(f"{filepath} written.")
 
         self.tone, self.length = tone, length
 
 
 class Elemental(_Sound):
+    """Class for generating spectra sounds using experimental input data.
+
+    Extends:
+        _Sound
+    """
     # For storing if we find spectras.
     has_spectra = True
 
     def __init__(
-        self, element, local_file=None, parallel=False, num_processors=4
+        self,
+        element,
+        local_file=None,
+        parallel=False,
+        num_processors=4,
+        verbose=True,
     ):
         """
         Initialization of element class.
         """
-        super().__init__(parallel=parallel, num_processors=num_processors)
+        super().__init__(
+            parallel=parallel,
+            num_processors=num_processors,
+            verbose=verbose
+        )
 
         self.filename = element
 
@@ -242,13 +284,15 @@ class Elemental(_Sound):
             if not self.check_spectras(element):
                 self.has_spectra = False
                 return
-            print("Spectra retrieved from nist.org.")
+            if self.verbose:
+                print("Spectra retrieved from nist.org.")
         else:
             self.spectra = element_downloader(element, local_file)
             if not self.check_spectras(element):
                 self.has_spectra = False
                 return
-            print(f"Spectra retrieved from local file {local_file}.")
+            if self.verbose:
+                print(f"Spectra retrieved from local file {local_file}.")
 
     def check_spectras(self, element: str) -> bool:
         """
@@ -256,15 +300,33 @@ class Elemental(_Sound):
         spectra.
         """
         if len(self.spectra) == 0:
-            print(f"No atomic spectra available for {element}")
+            if self.verbose:
+                print(f"No atomic spectra available for {element}")
             return False
         return True
 
 
 class Rydeberg(_Sound):
-    def __init__(self, n1_series, n2_max, parallel=False, num_processors=4):
+    """Generates atomic spectra using the Rydeberg formula.
 
-        super().__init__(parallel=parallel, num_processors=num_processors)
+    Method for generating atomic spectra for the Hydrogen atom, using the
+    Rydeberg formula.
+
+    Extends:
+        _Sound
+    """
+    def __init__(
+        self, n1_series, n2_max, parallel=False, num_processors=4, verbose=True
+    ):
+        """
+        Initialization of the Rydeberg spectra generator.
+        """
+
+        super().__init__(
+            parallel=parallel,
+            num_processors=num_processors,
+            verbose=verbose
+        )
 
         self.filename = f"H_Rydeberg_n{n1_series}"
 
@@ -275,7 +337,8 @@ class Rydeberg(_Sound):
         assert n1_series < n2_max, "n1 must be less than n2."
 
         if n2_max > 15:
-            print(f"Warning: {n2_max} > 15 will give poor results!")
+            if self.verbose:
+                print(f"Warning: {n2_max} > 15 will give poor results!")
 
         self.spectra = [
             rydeberg(i, n2_max=n2_max) ** (-1) * 10 ** 9

@@ -1,7 +1,7 @@
 import re
 import warnings
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from urllib.request import urlopen
 
 import numpy as np
@@ -271,4 +271,15 @@ def element_search(search_element: str) -> Optional[str]:
     for element in PERIODIC_TABLE:
         if search_element == element[-1]:
             return search_element
+    return False
+
+
+def get_element(search_element: str) -> Optional[Tuple[int, str, str]]:
+    """
+    Searching the periodic table for elements. Returns false if desired
+    element is not found.
+    """
+    for element in PERIODIC_TABLE:
+        if search_element == element[-1]:
+            return element
     return False

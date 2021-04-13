@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 from tqdm import tqdm
 
 from elemental.elemental import Elemental
-from elemental.utils import element_search, check_folder
+from elemental.utils import get_element, check_folder
 from get_viable_elements import retrieve_viable_elements
 
 
@@ -395,7 +395,9 @@ def norm_rgb(r, g, b):
 
 
 def constrain_rgb(r, g, b):
-    """Constrains the RGB representation, in order to remove negative values."""
+    """
+    Constrains the RGB representation, in order to remove negative values.
+    """
     w = -min(0, r, g, b)
     if w > 0:
         r += w
@@ -436,7 +438,6 @@ def _create_expanded_spectrum_input(N_new):
 def wavelength_to_rgb(
     wavelength: float, gamma: float = 0.8
 ) -> Tuple[float, float, float]:
-
     """This converts a given wavelength of light to an
     approximate RGB color value. The wavelength must be given
     in nanometers in the range from 380 nm through 750 nm
@@ -786,7 +787,7 @@ def generate_emission_spectra(
         element_fpath = spectra / (element_dict["short"] + ".dat")
 
         # Returns periodic table notation
-        element = element_search(element_dict["short"])
+        element = get_element(element_dict["short"])[-1]
         if not element:
             tqdm.write(f"Element not found: {element_fpath}.")
 

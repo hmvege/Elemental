@@ -240,11 +240,13 @@ def element_downloader(
 
 
 def print_element(element: str):
+    """Simple helper function for printing elements."""
     s = "{0:<15s} {1:<4s} {2:<3s}".format(*element)
     print(s)
 
 
 def print_all_elements():
+    """Simple helper function for printing all elements."""
     print("{0:<15s} {1:<4s} {2:<3s}".format("Element", "Num", "Id"))
     for element in PERIODIC_TABLE:
         print_element(element)
@@ -261,17 +263,6 @@ def check_folder(folder: Path, verbose: bool = True):
         if verbose:
             print(f"Creating output folder: {folder}")
         folder.mkdir()
-
-
-def element_search(search_element: str) -> Optional[str]:
-    """
-    Searching the periodic table for elements. Returns false if desired
-    element is not found.
-    """
-    for element in PERIODIC_TABLE:
-        if search_element == element[-1]:
-            return search_element
-    return False
 
 
 def get_element(search_element: str) -> Optional[Tuple[int, str, str]]:

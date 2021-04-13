@@ -32,6 +32,7 @@ scratch
 
 # virtual env
 venv
+venv-dev
 
 # pip junk
 .eggs

@@ -63,19 +63,19 @@ def generate_elements_audio(audio_folder: str, output_folder: str):
     assert len(output_audio) > 10, "Requires at least to seconds of audio."
 
     # Sets up the first element audio, fading sound in
-    output_audio = output_audio[1 * ms : 9 * ms]
+    output_audio = output_audio[1 * ms: 9 * ms]
     output_audio = output_audio.fade_in(2 * ms)
 
     for element_path in tqdm(sorted_elements[1:-1]):
 
         audio = AudioSegment.from_wav(element_path)
 
-        audio = audio[1 * ms : int(9.2 * ms)]
+        audio = audio[1 * ms: int(9.2 * ms)]
         output_audio = output_audio.append(audio, crossfade=int(ms * 0.2))
 
     # Sets up final audio element and fading out.
     end_audio = AudioSegment.from_wav(sorted_elements[-1])
-    end_audio = end_audio[1 * ms : int(9.2 * ms)]
+    end_audio = end_audio[1 * ms: int(9.2 * ms)]
     end_audio = end_audio.fade_out(2 * ms)
 
     output_audio = output_audio.append(end_audio, crossfade=int(ms * 0.2))

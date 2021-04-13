@@ -1,6 +1,7 @@
 import multiprocessing as mp
 from pathlib import Path
 from typing import Tuple
+import warnings
 
 import numba as nb
 import numpy as np
@@ -36,7 +37,7 @@ def create_tones(
 
     tone = np.zeros(t_modified.shape[0])
     for i in range(spectra.shape[0]):
-        tone += np.sin(spectra[i]*t_modified)
+        tone += np.sin(spectra[i] * t_modified)
 
     return envelope * tone
 
@@ -174,7 +175,7 @@ class _Sound:
     @nb.njit(cache=True)
     def _envelope_function(envelope_N: int) -> np.ndarray:
         """
-        Cosine envelope
+        Cosine envelope.
         """
         x = np.linspace(0, np.pi, envelope_N)
         return (1 - np.cos(x)) / 2.0
@@ -191,7 +192,7 @@ class _Sound:
         output_folder: Path = Path("sounds"),
     ):
         """
-        Function for creating soundfile from experimental element spectra.
+        Function for creating audio file from experimental element spectra.
         """
         if amplitude >= 0.1:
             raise ValueError(f"Change amplitude! {amplitude} is way to high!")
@@ -256,7 +257,8 @@ class Elemental(_Sound):
     Extends:
         _Sound
     """
-    # For storing if we find spectras.
+
+    # For storing if we find spectra.
     has_spectra = True
 
     def __init__(
@@ -271,9 +273,7 @@ class Elemental(_Sound):
         Initialization of element class.
         """
         super().__init__(
-            parallel=parallel,
-            num_processors=num_processors,
-            verbose=verbose
+            parallel=parallel, num_processors=num_processors, verbose=verbose
         )
 
         self.filename = element
@@ -287,7 +287,7 @@ class Elemental(_Sound):
             if self.verbose:
                 print("Spectra retrieved from nist.org.")
         else:
-            self.spectra = element_downloader(element, local_file)
+            self.spectra = element_downloader(element, local_file=local_file)
             if not self.check_spectras(element):
                 self.has_spectra = False
                 return
@@ -315,6 +315,7 @@ class Rydeberg(_Sound):
     Extends:
         _Sound
     """
+
     def __init__(
         self, n1_series, n2_max, parallel=False, num_processors=4, verbose=True
     ):
@@ -323,9 +324,7 @@ class Rydeberg(_Sound):
         """
 
         super().__init__(
-            parallel=parallel,
-            num_processors=num_processors,
-            verbose=verbose
+            parallel=parallel, num_processors=num_processors, verbose=verbose
         )
 
         self.filename = f"H_Rydeberg_n{n1_series}"
@@ -337,8 +336,7 @@ class Rydeberg(_Sound):
         assert n1_series < n2_max, "n1 must be less than n2."
 
         if n2_max > 15:
-            if self.verbose:
-                print(f"Warning: {n2_max} > 15 will give poor results!")
+            warnings.warn(f"Warning: {n2_max} > 15 will give poor results!")
 
         self.spectra = [
             rydeberg(i, n2_max=n2_max) ** (-1) * 10 ** 9

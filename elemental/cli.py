@@ -5,7 +5,7 @@ import click
 
 from elemental.elemental import Rydeberg, Elemental
 from elemental.spectra_retriever import spectra_retriever
-from .utils import element_search
+from .utils import get_element
 
 
 def default_sound_options(function):
@@ -138,7 +138,7 @@ def elemental(
     if verbose:
         pre_time = time.time()
 
-    assert element_search(element), f"Element {element} not found."
+    assert get_element(element)[-1], f"Element {element} not found."
 
     Sound = Elemental(
         element, local_elem_file, parallel, num_processors, verbose
@@ -237,6 +237,5 @@ def rydeberg(
     ),
 )
 def download_spectra(output_folder: click.Path, force_redownload: bool):
-    """Downloads all of the available atom spectra from nist.gov.
-    """
+    """Downloads all of the available atom spectra from nist.gov."""
     spectra_retriever(Path(output_folder), force_redownload)

@@ -64,6 +64,6 @@ $ rydeberg 4
 
 `-lf spectra/H.dat` gets the Hydrogen spectrum from a local file. `-p` enables parallel processing with a default of 4 cores. `-ln 5` makes the recording 5 seconds long.
 
-## TODO
-- add unit tests
-- check if file exists when creating sound. If so, will not create new since that is so costly
+
+## Testing
+Run `pytest` to unit test code base.

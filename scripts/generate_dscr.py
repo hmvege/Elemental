@@ -1,4 +1,5 @@
 import sys
+
 from elemental.utils import PERIODIC_TABLE
 
 

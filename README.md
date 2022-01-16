@@ -31,17 +31,8 @@ N_length = N_seconds * sampling_rate
 ```
 
 ## Installation
-Create a Python virtual environment using
 ```bash
-$ python3 -m venv venv
-```
-Then, activate the environment,
-```bash
-$ source venv/bin/activate
-```
-and install using
-```bash
-$ pip install -e .
+$ pip install .
 ```
 
 ### Install in `dev` mode
